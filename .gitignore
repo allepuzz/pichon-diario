@@ -1,0 +1,36 @@
+# El diario es personal: nunca se sube.
+pichon_diario.json
+pichon_diario*.json
+*.pruebas*
+
+# Copias de seguridad de las iteraciones
+*.bak
+*.bak[0-9]
+
+# El PDF del libro no es nuestro
+*.pdf
+lilb/
+
+# Audio de los dictados
+*.wav
+*.webm
+*.mp3
+
+# Notas internas de trabajo: llevan usuario e IPs reales
+PICHON_CONTEXTO.md
+PROMPT_CLAUDE_CODE.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Credenciales WiFi: NUNCA se suben
+credenciales.h
+**/credenciales.h
+
+# Arduino
+build/
+*.hex
+*.elf
