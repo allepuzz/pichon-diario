@@ -25,9 +25,9 @@ petición dirigida al aparato.
 
 > *"bueno primer día de trabajo hoy sin el área intensivo aquí seguimos
 > bien concentrado hemos llegado bastante de curro sí contento... y
-> recuérdame porfa que lo más importante para hoy es mandar currículums"*
+> recuérdame porfa que lo más importante para hoy es devolver las llaves"*
 
-Correcto: recoge trabajo, iglesia y currículums sin inventar actividades.
+Correcto: recoge trabajo, iglesia y las llaves sin inventar actividades.
 
 ---
 
@@ -60,7 +60,7 @@ Caso A: "Hoy por la tarde jugaste al ajedrez con tu padre y tu padre te
 
 Caso B: "Hoy has trabajado bien, has acabado la jornada intensa y has
          acumulado la sensación de quemado del curro.
-         No olvides: tienes que echar CVS."
+         No olvides: tienes que devolver las llaves."
 ```
 
 Sin el harness, el mismo modelo escribía *"te ganaste dos partidas"* y

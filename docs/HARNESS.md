@@ -79,7 +79,7 @@ prueba. El harness la pasó.**
    │  CORREGIR                   (determinista, sin LLM)            │
    │                                                                │
    │  corregir_persona()      "lo saqué" → "lo sacaste"             │
-   │  arreglar_concordancia() "él te ganaste" → "él te ganó"
+   │  arreglar_concordancia() "él te ganaste" → "él te ganó"         │
    │  arreglar_intencion()    "has olvidado X" → "tienes que X"      │
    │  recortar_a_frase()      ≤310 car., nunca a media palabra      │
    │  con_recordatorio()      pega "No olvides: ..." al final       │
@@ -105,9 +105,9 @@ trabajo y reduce el ruido del que puede tirar para inventar.
 que cuentas de tu día. Nació de un fallo real:
 
 ```
-dictado:  "lo más importante es que me imprimas que tengo que echar CVs"
-sin esto: "Lo importante es que te imprimas que tienes que echar CVS"  ✗
-con esto: "No olvides: tienes que echar CVS."                          ✓
+dictado:  "lo más importante es que me imprimas que tengo que devolver las llaves"
+sin esto: "Lo importante es que te imprimas que tienes que devolver las llaves"  ✗
+con esto: "No olvides: tienes que devolver las llaves."                          ✓
 ```
 
 El recordatorio **nunca pasa por el LLM**, así que no puede deformarse.
@@ -202,8 +202,8 @@ Sin la segunda, una candidata con nota 89 fue destruida por un
 verificador que respondía NO a todo.
 
 **El mismo modelo hace un segundo trabajo: distinguir tarea de hecho.**
-El dictado decía *"no olvidar de hablar con Juan Carlos"* (pendiente) y
-el 3B escribía *"has olvidado hablar con Juan Carlos"* — invierte el
+El dictado decía *"no olvidar de hablar con Ricardo"* (pendiente) y
+el 3B escribía *"has olvidado hablar con Ricardo"* — invierte el
 sentido y encima suena a reproche.
 
 | Modelo | Aciertos tarea/hecho |
@@ -316,7 +316,7 @@ tres veces más rápido que los de 8B.
 ## Lo que el harness NO arregla
 
 Esta sección existe porque casi todo lo medido hasta aquí se midió sobre
-**un solo dictado** — el de trabajo, currículums y Juan Carlos. Sobre
+**un solo dictado** — el de trabajo, las llaves y Ricardo. Sobre
 ese texto el sistema acierta 20 de 20. Sobre días que nunca había visto,
 **falla la mitad de las veces**.
 

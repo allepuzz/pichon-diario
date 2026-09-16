@@ -65,7 +65,7 @@ KEEP_ALIVE_AL_TERMINAR = 0     # 0 = sueltalo ya
 # --- Transcripcion con Whisper ---
 # El reconocimiento de Chrome es la mayor fuente de error del sistema:
 # con habla rapida devuelve cosas como "he tenido mas tarde" o parte
-# "Santo Domingo" en "San todo domingo". El modelo trabaja bien sobre
+# "Santo Tomas" en "San todo mas". El modelo trabaja bien sobre
 # texto roto (copia en vez de inventar), pero no puede arreglar lo que
 # no se entiende.
 #
@@ -76,22 +76,19 @@ WHISPER_BIN = os.path.expanduser("~/whisper.cpp/build/bin/whisper-cli")
 WHISPER_MODELO = os.path.expanduser("~/whisper.cpp/models/ggml-small.bin")
 WHISPER_ACTIVO = os.path.exists(WHISPER_BIN) and os.path.exists(WHISPER_MODELO)
 
-# Nombres propios que sueles decir. Whisper acepta un prompt inicial
-# que le sesga el vocabulario: sin esto convirtio "Murcia" en "Burce".
-# Anade aqui los tuyos: sitios, personas, calles, el barrio.
-WHISPER_CONTEXTO = (
-    "Diario personal en espanol de Espana. Pueden aparecer estos "
-    "nombres: Murcia, Santo Domingo, Juan Carlos Garcia, Ramon, Marta."
-)
-
-# Correcciones fijas para lo que Whisper sigue entendiendo mal. Es la
-# red de seguridad del prompt de arriba: clave = lo que oye,
-# valor = lo que era. Se aplican como palabra completa.
-WHISPER_ARREGLOS = {
-    "Burce": "Murcia",
-    "Burcia": "Murcia",
-    "Murce": "Murcia",
-}
+# Nombres propios que sueles decir. Whisper acepta un prompt inicial que
+# le sesga el vocabulario: sin esto, un nombre de ciudad poco frecuente
+# sale destrozado ("Murcia" -> "Burce").
+#
+# Van en vocabulario.py, que NO se sube al repo: son tus sitios, tu
+# gente y tus calles. Copia vocabulario_ejemplo.py como vocabulario.py
+# y rellenalo. Si no existe, el sistema funciona igual, solo que sin
+# ayuda con los nombres propios.
+try:
+    from vocabulario import WHISPER_CONTEXTO, WHISPER_ARREGLOS
+except ImportError:
+    WHISPER_CONTEXTO = "Diario personal hablado, en espanol de Espana."
+    WHISPER_ARREGLOS = {}
 # Margen amplio: un dictado de 3 minutos son ~2 min de transcripcion.
 TIMEOUT_WHISPER = 420
 
@@ -354,7 +351,7 @@ def validar_directo(m, original):
 
     Nacio de un caso real: el modelo copio el ejemplo del prompt y
     escribio "Hoy jugaste al tenis, hoy jugaste al futbol, hoy jugaste
-    al voleibol" sobre un dia que hablaba de trabajo y curriculums.
+    al voleibol" sobre un dia que hablaba de trabajo y papeleo.
     Sin este filtro la salida se guardaba tal cual.
     """
     t = m.strip()
@@ -546,7 +543,7 @@ def con_recordatorio(parrafo, recordatorios):
 
     # Ojo con recortar: recortar_a_frase() corta POR EL FINAL, y al
     # contar el dia lo que va al final suele ser lo que mas importa
-    # ("no olvidar hablar con Juan Carlos Garcia..."). Perdimos esa
+    # ("no olvidar hablar con Ricardo Fuentes..."). Perdimos esa
     # frase entera por apurar el limite del ticket.
     #
     # Asi que el limite se estira: 2 cm mas de papel valen mucho menos
@@ -1075,8 +1072,8 @@ TAREA_MAL_DICHA = [
 def arreglar_intencion(parrafo, original):
     """Convierte en tarea pendiente lo que el modelo puso como pasado.
 
-    Caso real: el dictado decia "no olvidar de hablar con Juan Carlos" y
-    el 3B escribio "has olvidado hablar con Juan Carlos" — invierte el
+    Caso real: el dictado decia "no olvidar de hablar con Ricardo" y
+    el 3B escribio "has olvidado hablar con Ricardo" — invierte el
     sentido y encima suena a reproche.
 
     El 3B no distingue tarea de hecho (4/8, y porque dice TAREA a todo).

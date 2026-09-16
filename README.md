@@ -84,6 +84,7 @@ y reiniciaría el ESP32 si colgara de él.
 | `pichon_esp32_final/pichon_esp32_final.ino` | El sketch del ESP32 |
 | `pichon_esp32_final/credenciales_ejemplo.h` | Plantilla de WiFi — **hay que copiarla** |
 | `pichon_frases.txt` | 109 citas del libro, verificadas literales |
+| `vocabulario_ejemplo.py` | Tus nombres propios para Whisper — **cópialo** |
 
 ### 1. La Raspberry Pi
 
@@ -100,6 +101,15 @@ bash ./models/download-ggml-model.sh small
 
 scp pichon_servidor.py pichon_frases.txt usuario@pichon.local:~/
 ```
+
+```bash
+cp vocabulario_ejemplo.py vocabulario.py   # y pon tus nombres propios
+```
+
+Ese archivo le dice a Whisper qué nombres esperar: tu ciudad, tu calle,
+la gente con la que hablas. Sin él funciona igual, pero los nombres
+propios poco frecuentes salen destrozados — "Murcia" se convertía en
+"Burce" hasta que se añadió. No se sube al repo.
 
 El diario (`pichon_diario.json`) se crea solo con la primera entrada.
 Si `whisper.cpp` no está, el servidor lo detecta y usa la transcripción
@@ -198,7 +208,7 @@ usar el reconocimiento de Chrome, y la Pi lo pasa por `whisper.cpp`
 Si Whisper falla o no está, se usa el texto de Chrome automáticamente.
 
 La diferencia es grande: donde Chrome oía *"la parroquia de San todo
-domingo"*, Whisper transcribe *"la iglesia de Santo Domingo"*.
+domingo"*, Whisper transcribe *"el club de atletismo"*.
 
 ### Lo que está medido
 

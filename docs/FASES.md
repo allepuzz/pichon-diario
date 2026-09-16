@@ -113,14 +113,14 @@ despertar el ESP32 solo, imprimiendo tickets a deshoras.
 ## Fase 5 — El primer fallo de verdad: alucina deportes
 
 **Estado:** todo el circuito funciona. Llega el primer dictado real, que
-hablaba de trabajo, espiritualidad y mandar currículums.
+hablaba de trabajo, el papeleo y devolver las llaves.
 
 **Lo que imprimió:**
 
 > *"Hoy jugaste al tenis, hoy jugaste al fútbol, hoy jugaste al voleibol."*
 
 No había ni un deporte en el dictado. Y el recordatorio que el usuario
-pidió expresamente —mandar currículums— desapareció.
+pidió expresamente —devolver las llaves— desapareció.
 
 **La causa, y es instructiva:** el prompt contenía esta regla:
 
@@ -144,9 +144,9 @@ regla se había escrito con un ejemplo concreto.
 **Resultado:**
 
 > *"Hoy has estado bien concentrado en el trabajo... No olvides recordar
-> la espiritualidad y la suerte para el domingo en la iglesia de Santo
+> la el papeleo y la suerte para el domingo en la iglesia de Santo
 > Domingo, y recuérdame que lo más importante para hoy es mandar
-> currículums."*
+> las llaves."*
 
 ---
 
@@ -266,9 +266,9 @@ el sistema cayó al plan B, produciendo algo mucho peor.
 ## Fase 9 — Lo que le pides al aparato no es tu día
 
 **El fallo:** dictado real que decía *"lo más importante es que me
-imprimas que tengo que echar CVs"*. Salió:
+imprimas que tengo que devolver las llaves"*. Salió:
 
-> *"Lo importante es que **te imprimas** que tienes que echar CVS"*
+> *"Lo importante es que **te imprimas** que tienes que devolver las llaves"*
 
 Agramatical. El modelo copió la petición literal sin entender que iba
 dirigida **a Pichón**, no al relato del día.
@@ -282,7 +282,7 @@ recordatorio no pasa por el LLM, así que no puede salir deformado.
 
 > *"Hoy has trabajado bien, has acabado la jornada intensa y has
 > acumulado la sensación de quemado del curro. **No olvides: tienes que
-> echar CVS.**"*
+> devolver las llaves.**"*
 
 ---
 
@@ -317,9 +317,9 @@ Es el compromiso correcto para una Pi compartida.
 
 | | Al principio | Ahora |
 |---|---|---|
-| Día real | *"jugaste al tenis, al fútbol, al voleibol"* | trabajo, iglesia, currículums |
+| Día real | *"jugaste al tenis, al fútbol, al voleibol"* | trabajo, iglesia, las llaves |
 | Ajedrez | *"te ganaste dos partidas"* | *"tu padre te ganó dos partidas"* |
-| Recordatorio | *"es que te imprimas que tienes que echar CVS"* | *"No olvides: tienes que echar CVS"* |
+| Recordatorio | *"es que te imprimas que tienes que devolver las llaves"* | *"No olvides: tienes que devolver las llaves"* |
 | Longitud | cortada a media palabra | frase completa, ≤300 caracteres |
 | RAM en reposo | 5 GB ocupados | 0 |
 
@@ -365,7 +365,7 @@ un proceso nocturno en el que dictas y te vas a dormir, es asumible.
 **El fallo:** el dictado decía *"y luego no olvidar de hablar con Juan
 Carlos García"* — una tarea pendiente. El resumen salió:
 
-> *"Luego **has olvidado** hablar con Juan Carlos García."*
+> *"Luego **has olvidado** hablar con Ricardo Fuentes."*
 
 Invierte el sentido, y encima suena a reproche en un papel que lees
 recién levantado.
@@ -388,7 +388,7 @@ tokens razonando y devuelven la respuesta vacía (`SIN_RAZONAR = True`),
 y en una Pi sin GPU razonar cuesta cientos de tokens antes de la primera
 palabra útil.
 
-**Resultado:** 3/3 correctas. *"Mañana tienes que hablar con Juan Carlos
+**Resultado:** 3/3 correctas. *"Mañana tienes que hablar con Ricardo
 García"*.
 
 ---
@@ -467,7 +467,7 @@ fallos están ordenados por facilidad de arreglo:
 
 **Medir Whisper contra Chrome sobre dictados reales.** El diario guarda
 las dos transcripciones (`texto` y `texto_navegador`). Las primeras
-comparaciones son claras a favor de Whisper —*"Juan Carlos García"*
+comparaciones son claras a favor de Whisper —*"Ricardo Fuentes"*
 frente a *"San todo domingo"*— pero falta acumular días.
 
 **El diccionario de nombres propios crece con el uso.** `Murcia` salía
@@ -481,10 +481,10 @@ apareciendo.
 
 | | Al principio | Ahora |
 |---|---|---|
-| Día real | *"jugaste al tenis, al fútbol, al voleibol"* | trabajo, iglesia, currículums |
+| Día real | *"jugaste al tenis, al fútbol, al voleibol"* | trabajo, iglesia, las llaves |
 | Ajedrez | *"te ganaste dos partidas"* | *"tu padre te ganó dos partidas"* |
-| Recordatorio | *"es que te imprimas que tienes que echar CVS"* | *"No olvides: tienes que echar CVS"* |
-| Tarea pendiente | *"has olvidado hablar con Juan Carlos"* | *"tienes que hablar con Juan Carlos"* |
-| Transcripción | *"la parroquia de San todo domingo"* | *"la iglesia de Santo Domingo"* |
+| Recordatorio | *"es que te imprimas que tienes que devolver las llaves"* | *"No olvides: tienes que devolver las llaves"* |
+| Tarea pendiente | *"has olvidado hablar con Ricardo"* | *"tienes que hablar con Ricardo"* |
+| Transcripción | *"la parroquia de San todo domingo"* | *"el club de atletismo"* |
 | Longitud | cortada a media palabra | 10 líneas, 3,5 cm |
 | RAM en reposo | 5 GB ocupados | 0 |

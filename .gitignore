@@ -26,6 +26,9 @@ __pycache__/
 .venv/
 venv/
 
+# Vocabulario personal: sitios y gente de tu vida
+vocabulario.py
+
 # Credenciales WiFi: NUNCA se suben
 credenciales.h
 **/credenciales.h
