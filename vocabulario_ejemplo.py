@@ -25,6 +25,5 @@ WHISPER_CONTEXTO = (
 #   valor = lo que era en realidad
 # Se aplican como palabra completa, sin distinguir mayusculas.
 WHISPER_ARREGLOS = {
-    # "Burce": "Murcia",
     # "Sara Goza": "Zaragoza",
 }

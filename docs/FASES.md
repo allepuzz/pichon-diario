@@ -9,7 +9,7 @@ dos trampas puestas a propósito — muletillas y una inversión de agente
 (gana la otra persona, no quien cuenta):
 
 > *"pues hoy eh me levante tarde o sea fatal y luego jugue al tenis con
-> Marta y me ha ganado ella 6-3 sabes, estuve toda la tarde con el
+> Clara y me ha ganado ella 6-3 sabes, estuve toda la tarde con el
 > conector de la impresora que estaba mal puesto al final lo saque estoy
 > contento pero agotado"*
 
@@ -56,7 +56,7 @@ transitorio con `systemd-run` que intenta la conexión, espera, y vuelve
 al hotspot pase lo que pase.
 
 **Resultado:** reinicio en frío verificado. La Pi arranca sola, se
-conecta sola, y el servidor levanta solo. ✅
+conecta sola, y el servidor levanta solo.
 
 ---
 
@@ -106,7 +106,7 @@ IP fija y esperaba hardware que no existía.
 `ext0_wakeup` sobre GPIO33. Sin botón cableado, ese pin flota y puede
 despertar el ESP32 solo, imprimiendo tickets a deshoras.
 
-**Resultado:** ✅ imprime.
+**Resultado:** imprime.
 
 ---
 
@@ -199,14 +199,14 @@ arregla solo.
 
 | Modelo | ¿Acierta quién gana? | ¿Inventa? |
 |---|---|---|
-| `llama3.2:3b` **+ harness** | ✅ 4/4 | no |
-| `llama3.2:3b` solo | ❌ | no |
-| `qwen2.5:7b-instruct` | ❌ copia el original | no reescribe |
-| `llama3.1:8b` | ❌ invierte | sí: *"traer tus libros"*, *"estudiar para el examen"* |
-| `mistral:7b` | ❌ invierte | sí: confunde tiempos verbales |
-| `glm4:9b` | ❌ | — (322 s por respuesta) |
-| `gemma2:2b` | ❌ | sí: *"te sentaste bien"* |
-| `phi3:3.8b` | ❌ invierte | español roto: *"la concentra extranjera"* |
+| `llama3.2:3b` **+ harness** | bien, 4/4 | no |
+| `llama3.2:3b` solo | falla | no |
+| `qwen2.5:7b-instruct` | falla, copia el original | no reescribe |
+| `llama3.1:8b` | invierte el resultado | sí: *"traer tus libros"*, *"estudiar para el examen"* |
+| `mistral:7b` | invierte el resultado | sí: confunde tiempos verbales |
+| `glm4:9b` | falla | — (322 s por respuesta) |
+| `gemma2:2b` | falla | sí: *"te sentaste bien"* |
+| `phi3:3.8b` | invierte el resultado | español roto: *"la concentra extranjera"* |
 
 Detalle completo en [MODELOS.md](MODELOS.md).
 
@@ -327,17 +327,16 @@ Es el compromiso correcto para una Pi compartida.
 
 ## Fase 11 — Whisper: atacar la transcripción
 
-**El cuello de botella que quedaba.** Este es un dictado real, tal como
-lo transcribió Chrome:
+**El cuello de botella que quedaba.** Así transcribía Chrome un dictado
+con habla rápida:
 
 > *"hoy día vienen trabajo bien eh se ha acabado la jornada intensa...
-> he tenido más tarde... lo voy a mala... la parroquia de San todo
-> domingo"*
+> he tenido más tarde... lo voy a mala... el clu de atletismo"*
 
-*"he tenido más tarde"* no significa nada. *"San todo domingo"* es "Santo
-Domingo" partido en dos. El modelo trabaja bien sobre eso —copia en vez
-de inventar, que es lo correcto— pero no puede arreglar lo que no se
-entiende.
+*"he tenido más tarde"* no significa nada, y *"el clu de atletismo"* es
+un nombre propio partido por la mitad. El modelo trabaja bien sobre eso
+—copia en vez de inventar, que es lo correcto— pero no puede arreglar
+lo que no se entiende.
 
 **Qué se hizo:**
 
@@ -468,10 +467,10 @@ fallos están ordenados por facilidad de arreglo:
 **Medir Whisper contra Chrome sobre dictados reales.** El diario guarda
 las dos transcripciones (`texto` y `texto_navegador`). Las primeras
 comparaciones son claras a favor de Whisper —*"Ricardo Fuentes"*
-frente a *"San todo domingo"*— pero falta acumular días.
+frente a *"el clu de atletismo"*— pero falta acumular días.
 
-**El diccionario de nombres propios crece con el uso.** `Murcia` salía
-como *"Burce"* hasta que se añadió al prompt de Whisper y a
+**El diccionario de nombres propios crece con el uso.** `Zaragoza` salía
+como *"Sara Goza"* hasta que se añadió al prompt de Whisper y a
 `WHISPER_ARREGLOS`. Calles, barrios y nombres de compañeros irán
 apareciendo.
 
@@ -485,6 +484,6 @@ apareciendo.
 | Ajedrez | *"te ganaste dos partidas"* | *"tu padre te ganó dos partidas"* |
 | Recordatorio | *"es que te imprimas que tienes que devolver las llaves"* | *"No olvides: tienes que devolver las llaves"* |
 | Tarea pendiente | *"has olvidado hablar con Ricardo"* | *"tienes que hablar con Ricardo"* |
-| Transcripción | *"la parroquia de San todo domingo"* | *"el club de atletismo"* |
+| Transcripción | *"el clu de atletismo"* | *"el club de atletismo"* |
 | Longitud | cortada a media palabra | 10 líneas, 3,5 cm |
 | RAM en reposo | 5 GB ocupados | 0 |

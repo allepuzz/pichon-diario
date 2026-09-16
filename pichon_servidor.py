@@ -78,7 +78,7 @@ WHISPER_ACTIVO = os.path.exists(WHISPER_BIN) and os.path.exists(WHISPER_MODELO)
 
 # Nombres propios que sueles decir. Whisper acepta un prompt inicial que
 # le sesga el vocabulario: sin esto, un nombre de ciudad poco frecuente
-# sale destrozado ("Murcia" -> "Burce").
+# sale destrozado ("Zaragoza" -> "Sara Goza").
 #
 # Van en vocabulario.py, que NO se sube al repo: son tus sitios, tu
 # gente y tus calles. Copia vocabulario_ejemplo.py como vocabulario.py

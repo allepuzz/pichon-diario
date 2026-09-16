@@ -66,7 +66,7 @@ La documentación completa de cómo se llegó ahí:
 **Cableado** (tres cables, nada más):
 
 ```
-ESP32 GPIO17 (TX2) ──────▶ pin TX de la impresora   ⚠️ TX, no RX
+ESP32 GPIO17 (TX2) ──────▶ pin TX de la impresora   TX, no RX
 ESP32 GND ───────────────▶ GND de la impresora
 ESP32 GND ───────────────▶ CTS de la impresora      (control de flujo)
 ```
@@ -108,8 +108,8 @@ cp vocabulario_ejemplo.py vocabulario.py   # y pon tus nombres propios
 
 Ese archivo le dice a Whisper qué nombres esperar: tu ciudad, tu calle,
 la gente con la que hablas. Sin él funciona igual, pero los nombres
-propios poco frecuentes salen destrozados — "Murcia" se convertía en
-"Burce" hasta que se añadió. No se sube al repo.
+propios poco frecuentes salen destrozados — "Zaragoza" se convertía en
+"Sara Goza" hasta que se añadió. No se sube al repo.
 
 El diario (`pichon_diario.json`) se crea solo con la primera entrada.
 Si `whisper.cpp` no está, el servidor lo detecta y usa la transcripción
@@ -144,11 +144,11 @@ cp credenciales_ejemplo.h credenciales.h   # y rellénalo con tu WiFi
 En el IDE de Arduino: placa **ESP32 Dev Module** (o DOIT ESP32 DEVKIT
 V1), y subir. Pulsar RESET imprime al momento, sin esperar a las 9:00.
 
-> ⚠️ **La ruta no puede tener paréntesis ni espacios.** Las herramientas
+> **La ruta no puede tener paréntesis ni espacios.** Las herramientas
 > de compilación de ESP32 fallan con un error confuso sobre
 > `bootloader.bin`.
 >
-> ⚠️ El ESP32 clásico **solo ve WiFi de 2,4 GHz**.
+> Aviso: El ESP32 clásico **solo ve WiFi de 2,4 GHz**.
 
 ### Endpoints
 
@@ -200,15 +200,15 @@ ambiguos, ~160 s.
 
 ## Estado
 
-✅ **Funciona de extremo a extremo**: dictas de noche, imprime a las 9:00.
+**Funciona de extremo a extremo**: dictas de noche, imprime a las 9:00.
 
-✅ **Transcripción con Whisper.** El navegador graba el audio además de
+**Transcripción con Whisper.** El navegador graba el audio además de
 usar el reconocimiento de Chrome, y la Pi lo pasa por `whisper.cpp`
 (modelo `small`, más rápido que tiempo real: 11 s de audio en 7,4 s).
 Si Whisper falla o no está, se usa el texto de Chrome automáticamente.
 
-La diferencia es grande: donde Chrome oía *"la parroquia de San todo
-domingo"*, Whisper transcribe *"el club de atletismo"*.
+La diferencia es grande: donde Chrome partía un nombre propio en dos
+palabras sin sentido, Whisper lo transcribe entero.
 
 ### Lo que está medido
 

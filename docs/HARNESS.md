@@ -70,8 +70,8 @@ prueba. El harness la pasó.**
                         │        │  "¿ya lo hizo, o tiene   │
                         │        │   que hacerlo?"          │
                         │        │                          │
-                        │        │  ⚠️ si tumba 2/3 o más,  │
-                        │        │     se ignora el juez    │
+                        │        │  si tumba 2/3 o más,     │
+                        │        │  se ignora el juez       │
                         │        └────────────┬────────────┘
                         └──────────┬──────────┘
                                    │
@@ -79,7 +79,7 @@ prueba. El harness la pasó.**
    │  CORREGIR                   (determinista, sin LLM)            │
    │                                                                │
    │  corregir_persona()      "lo saqué" → "lo sacaste"             │
-   │  arreglar_concordancia() "él te ganaste" → "él te ganó"         │
+   │  arreglar_concordancia() "él te ganaste" → "él te ganó"        │
    │  arreglar_intencion()    "has olvidado X" → "tienes que X"      │
    │  recortar_a_frase()      ≤310 car., nunca a media palabra      │
    │  con_recordatorio()      pega "No olvides: ..." al final       │
@@ -106,8 +106,8 @@ que cuentas de tu día. Nació de un fallo real:
 
 ```
 dictado:  "lo más importante es que me imprimas que tengo que devolver las llaves"
-sin esto: "Lo importante es que te imprimas que tienes que devolver las llaves"  ✗
-con esto: "No olvides: tienes que devolver las llaves."                          ✓
+sin esto: "Lo importante es que te imprimas que tienes que devolver las llaves"  mal
+con esto: "No olvides: tienes que devolver las llaves."                          ok
 ```
 
 El recordatorio **nunca pasa por el LLM**, así que no puede deformarse.

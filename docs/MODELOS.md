@@ -38,14 +38,14 @@ harness y sin él.
 
 | Modelo | Tamaño | Caso A | Caso B | Velocidad | Veredicto |
 |---|---|---|---|---|---|
-| **`llama3.2:3b` + harness** | 2.0 GB | ✅ 4/4 | ✅ | 9-22 s | **el elegido** |
-| `llama3.2:3b` solo | 2.0 GB | ❌ | ⚠️ | 9-22 s | mejor base |
-| `qwen2.5:7b-instruct` | 4.7 GB | ❌ | ⚠️ | 29-123 s | **buen verificador** |
-| `llama3.1:8b` | 4.9 GB | ❌ invierte | ❌ inventa | 24-40 s | descartado |
-| `mistral:7b` | 4.4 GB | ❌ invierte | ❌ 1ª persona plural | 20-47 s | descartado |
-| `glm4:9b` | 5.5 GB | ❌ | — | 322 s | descartado |
-| `gemma2:2b` | 1.6 GB | ❌ | ❌ inventa | 6-15 s | descartado |
-| `phi3:3.8b` | 2.2 GB | ❌ invierte | ❌ español roto | 11-23 s | descartado |
+| **`llama3.2:3b` + harness** | 2.0 GB | bien, 4/4 | bien | 9-22 s | **el elegido** |
+| `llama3.2:3b` solo | 2.0 GB | falla | regular | 9-22 s | mejor base |
+| `qwen2.5:7b-instruct` | 4.7 GB | falla, copia el original | regular | 29-123 s | **buen verificador** |
+| `llama3.1:8b` | 4.9 GB | invierte el resultado | inventa | 24-40 s | descartado |
+| `mistral:7b` | 4.4 GB | invierte el resultado | 1ª persona plural | 20-47 s | descartado |
+| `glm4:9b` | 5.5 GB | falla | — | 322 s | descartado |
+| `gemma2:2b` | 1.6 GB | falla | inventa | 6-15 s | descartado |
+| `phi3:3.8b` | 2.2 GB | invierte el resultado | español roto | 11-23 s | descartado |
 
 ---
 
@@ -56,7 +56,7 @@ harness y sin él.
 ```
 Caso A: "Hoy por la tarde jugaste al ajedrez con tu padre y tu padre te
          ganó dos partidas seguidas, luego tu hermana preparó la cena."
-        ✅ 4 de 4 intentos correctos
+        4 de 4 intentos correctos
 
 Caso B: "Hoy has trabajado bien, has acabado la jornada intensa y has
          acumulado la sensación de quemado del curro.
@@ -71,7 +71,7 @@ Sin el harness, el mismo modelo escribía *"te ganaste dos partidas"* y
 ### `qwen2.5:7b-instruct` — mal redactor, excelente juez
 
 ```
-Caso B: "Hoy me levantaste tarde fatal, luego jugaste al tenis con Marta
+Caso B: "Hoy me levantaste tarde fatal, luego jugaste al tenis con Clara
          y me ha ganado ella 6-3, estuve toda la tarde con el conector..."
 ```
 
@@ -83,12 +83,12 @@ copia el dictado cambiando algún verbo suelto. Probado a temperatura
 
 | Afirmación | Esperado | Respondió |
 |---|---|---|
-| "jugaste al ajedrez con tu padre" | SÍ | ✅ SÍ |
-| "tu hermana preparó la cena" | SÍ | ✅ SÍ |
-| "tu padre te ganó dos partidas" | SÍ | ✅ SÍ |
-| "fuiste a la playa con tus primos" | NO | ✅ NO |
-| "comiste paella mirando el mar" | NO | ✅ NO |
-| "estudiaste para el examen" | NO | ✅ NO |
+| "jugaste al ajedrez con tu padre" | SÍ | SÍ |
+| "tu hermana preparó la cena" | SÍ | SÍ |
+| "tu padre te ganó dos partidas" | SÍ | SÍ |
+| "fuiste a la playa con tus primos" | NO | NO |
+| "comiste paella mirando el mar" | NO | NO |
+| "estudiaste para el examen" | NO | NO |
 
 Su rigidez es defecto redactando y virtud juzgando. **Es el verificador
 del sistema.**
