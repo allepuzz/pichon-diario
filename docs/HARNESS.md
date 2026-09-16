@@ -1,20 +1,11 @@
 # Harness engineering
 
-> **Harness**: todo lo que rodea a la llamada al modelo. Cómo se prepara
-> la entrada, cómo se valida la salida, qué se reintenta, qué se corrige
-> de forma determinista, y qué se hace cuando nada funciona.
->
-> El modelo es una pieza. El harness es la máquina alrededor.
-
 Este documento explica la arquitectura que hace que un modelo de 3B
 —que solo no acierta— produzca resultados fiables.
 
 ---
 
 ## El principio
-
-> **No le pidas al modelo lo que puede hacer un regex.
-> No te fíes de que acierte sin verificarlo.**
 
 Cada vez que existe una regla determinista disponible, esa regla gana a
 rezarle al prompt. Suena obvio; en la práctica cuesta, porque la
@@ -156,11 +147,11 @@ candidatas.sort(reverse=True)
 
 **`validar_directo()`** rechaza tres cosas, todas detectables sin LLM:
 
-| Qué detecta | Ejemplo real |
-|---|---|
-| Frases repetidas | *"Hoy jugaste al tenis, hoy jugaste al fútbol, hoy jugaste al voleibol"* |
-| Palabras inventadas | *"la saquéste"*, *"juegaste"* |
-| Vocabulario ajeno | más de 1/3 de palabras que no vienen del texto |
+| Qué detecta         | Ejemplo real                                                             |
+| ------------------- | ------------------------------------------------------------------------ |
+| Frases repetidas    | _"Hoy jugaste al tenis, hoy jugaste al fútbol, hoy jugaste al voleibol"_ |
+| Palabras inventadas | _"la saquéste"_, _"juegaste"_                                            |
+| Vocabulario ajeno   | más de 1/3 de palabras que no vienen del texto                           |
 
 **Un bug sutil que tuvo que arreglarse:** la primera versión comparaba
 raíces por 5 caracteres, y eso **penalizaba las conjugaciones correctas**
@@ -179,11 +170,11 @@ modelo que descartamos por redactar mal. No es contradicción: lo que le
 hace mal redactor —se pega al texto original, no se aleja— es justo lo
 que le hace buen juez.
 
-| Modelo | Aciertos verificando |
-|---|---|
-| `qwen2.5:7b-instruct` | **6/6** |
-| `llama3.2:3b` | 3/6 (dice NO a todo) |
-| `glm4:9b` | 3/6 (dice NO a todo) |
+| Modelo                | Aciertos verificando |
+| --------------------- | -------------------- |
+| `qwen2.5:7b-instruct` | **6/6**              |
+| `llama3.2:3b`         | 3/6 (dice NO a todo) |
+| `glm4:9b`             | 3/6 (dice NO a todo) |
 
 **Las dos salvaguardas**, ambas nacidas de un fallo real
 (esquemático; el código real está en `destilar_directo()`):
@@ -202,24 +193,24 @@ Sin la segunda, una candidata con nota 89 fue destruida por un
 verificador que respondía NO a todo.
 
 **El mismo modelo hace un segundo trabajo: distinguir tarea de hecho.**
-El dictado decía *"no olvidar de hablar con Ricardo"* (pendiente) y
-el 3B escribía *"has olvidado hablar con Ricardo"* — invierte el
+El dictado decía _"no olvidar de hablar con Ricardo"_ (pendiente) y
+el 3B escribía _"has olvidado hablar con Ricardo"_ — invierte el
 sentido y encima suena a reproche.
 
-| Modelo | Aciertos tarea/hecho |
-|---|---|
-| `qwen2.5:7b-instruct` | **8/8** |
-| `llama3.2:3b` | 4/8 (dice TAREA a todo) |
+| Modelo                | Aciertos tarea/hecho    |
+| --------------------- | ----------------------- |
+| `qwen2.5:7b-instruct` | **8/8**                 |
+| `llama3.2:3b`         | 4/8 (dice TAREA a todo) |
 
 `arreglar_intencion()` solo pregunta cuando el párrafo tiene frases
-sospechosas (*"has olvidado"*, *"te olvidaste de"*). Si no las hay, el
+sospechosas (_"has olvidado"_, _"te olvidaste de"_). Si no las hay, el
 7B ni se carga. Y cuando ambas cosas tocan —verificar e intención— se
 carga una sola vez.
 
 **Por qué no un modelo de razonamiento.** Se planteó añadir un
 razonador (`qwen3:4b`, `deepseek-r1:7b`) como capa de comprensión. No
 hizo falta: el 7B ya instalado acierta 8/8. Y había dos razones para
-desconfiar — el código ya avisaba de que los modelos *thinking* a veces
+desconfiar — el código ya avisaba de que los modelos _thinking_ a veces
 agotan los tokens razonando y devuelven la respuesta vacía
 (`SIN_RAZONAR = True`), y en una Pi sin GPU razonar cuesta cientos de
 tokens antes de la primera palabra útil.
@@ -240,7 +231,7 @@ pronombres (`me→te`, `mi→tu`).
 versión convertía "café" en "cafaste" y "allí" en "alliste". Hay una
 lista de excepciones y un mínimo de longitud de raíz.
 
-**`arreglar_concordancia()`** — *"él te ganaste"* es agramatical en
+**`arreglar_concordancia()`** — _"él te ganaste"_ es agramatical en
 español. Cuando aparece, sabemos **con certeza** que el verbo está mal
 conjugado, y se pasa a tercera persona. No hay ambigüedad que resolver.
 
@@ -296,7 +287,7 @@ verifiques", sino "mide si tu verificador discrimina antes de confiar en
 él" — y ten una salida cuando no lo haga.
 
 **Un ejemplo dentro de una regla del prompt se copia.** La regla decía
-*"habla en segunda persona: hoy jugaste al tenis..."* y el modelo escribió
+_"habla en segunda persona: hoy jugaste al tenis..."_ y el modelo escribió
 tres frases sobre deportes. Los ejemplos enseñan formato; nunca deben
 llevar contenido plausible.
 
@@ -325,21 +316,17 @@ de hombro, una mudanza, una discusión, aprobar una oposición, un viaje a
 Lisboa, preocupación por dinero, un día plano). Cuatro salieron limpios.
 Los otros cuatro:
 
-| Fallo | Ejemplo real |
-|---|---|
-| Pierde detalles | *"hemos vaciado el piso con cajas"* → el resumen no menciona las cajas |
-| Primera persona en presente | *"te dijo que **necesito** operarme"* |
-| Gramática rota | *"has estado justo mes"*, *"Tú has estado"* |
-| Cambia un verbo | *"quiero **ver** el mirador"* → *"quieres **hablar con la gente** del mirador"* |
+| Fallo                       | Ejemplo real                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| Pierde detalles             | _"hemos vaciado el piso con cajas"_ → el resumen no menciona las cajas          |
+| Primera persona en presente | _"te dijo que **necesito** operarme"_                                           |
+| Gramática rota              | _"has estado justo mes"_, _"Tú has estado"_                                     |
+| Cambia un verbo             | _"quiero **ver** el mirador"_ → _"quieres **hablar con la gente** del mirador"_ |
 
 Ninguno es catastrófico —no inventa días enteros ni invierte quién gana
 a quién, que eran los fallos graves— pero están ahí.
 
 **La lección metodológica**, que vale más que el detalle concreto:
-
-> Optimizar contra un solo caso de prueba produce un sistema que resuelve
-> ese caso. Cada arreglo específico es una hipótesis sobre el mundo, y
-> hay que comprobarla contra casos que no la inspiraron.
 
 Un ejemplo de lo que eso destapó: la lista `RASTROS_EJEMPLO` llegó a
 contener `"jugaste al voleibol"`, añadido para cazar un caso en que el
