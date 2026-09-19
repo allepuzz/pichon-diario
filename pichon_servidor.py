@@ -445,6 +445,132 @@ def validar_sintesis(m, hechos):
 
 
 # ==================================================================
+# LA LISTA DE PROYECTOS EN MARCHA
+# ==================================================================
+PROYECTOS_ARCHIVO = os.path.expanduser("~/pichon_proyectos.json")
+
+# Con que frases anades algo. Todo lo que venga detras, hasta el corte,
+# es el nombre del proyecto.
+PROY_ANADIR = [
+    r"a[nñ]ade (?:a la lista |al ticket |a los proyectos |a proyectos )?(?:que |lo de |el |la )?",
+    r"apunta (?:a la lista |en la lista |el proyecto )?(?:que |lo de )?",
+    r"nuevo proyecto:?\s*",
+    r"empiezo (?:con |el proyecto )(?:de |lo de )?",
+    r"he empezado (?:con |el proyecto )?(?:de |lo de )?",
+]
+
+# Con que frases quitas algo.
+PROY_QUITAR = [
+    r"quita (?:de la lista |de los proyectos |del ticket )?(?:que |lo de )?",
+    r"borra (?:de la lista |de los proyectos )?(?:que |lo de )?",
+    r"ya (?:he )?termin[eé] (?:lo de |el |la |con )?",
+    r"ya est[aá] (?:hecho |listo )?(?:lo de |el |la )?",
+    r"he acabado (?:lo de |el |la |con )?",
+    r"he terminado (?:lo de |el |la |con )?",
+    r"da por hecho (?:lo de |el |la )?",
+]
+
+# Donde acaba el nombre del proyecto.
+PROY_CORTE = (r"\.|,|\by (?:luego|tambi[eé]n|despu[eé]s)\b|\bpor lo dem[aá]s\b"
+         r"|\bno olvid|\bade[mM][aá]s\b")
+
+
+def cargar_proyectos():
+    if not os.path.exists(PROYECTOS_ARCHIVO):
+        return []
+    try:
+        with open(PROYECTOS_ARCHIVO, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def guardar_proyectos(lista):
+    with open(PROYECTOS_ARCHIVO, "w", encoding="utf-8") as f:
+        json.dump(lista, f, ensure_ascii=False, indent=1)
+
+
+def _norm_proy(s):
+    """Para comparar: sin tildes, sin articulos, en minusculas."""
+    t = s.lower().strip(" .,;:")
+    t = t.translate(str.maketrans("áéíóúñ", "aeioun"))
+    t = re.sub(r"^(?:el|la|los|las|lo|un|una|de|del)\s+", "", t)
+    return re.sub(r"\s+", " ", t)
+
+
+def _mismo_proy(a, b):
+    """Dos nombres que se refieren al mismo proyecto.
+
+    No exige igualdad: "lo de los limoneros" y "fotos limoneros" son lo
+    mismo. Basta con que uno contenga al otro, o que compartan una
+    palabra larga y significativa.
+    """
+    na, nb = _norm_proy(a), _norm_proy(b)
+    if na == nb or na in nb or nb in na:
+        return True
+    pa = {w for w in na.split() if len(w) > 4}
+    pb = {w for w in nb.split() if len(w) > 4}
+    return bool(pa & pb)
+
+
+def _extraer_proy(texto, patrones):
+    """Saca los nombres que siguen a cada patron."""
+    fuera = []
+    for pat in patrones:
+        for m in re.finditer(pat, texto, re.IGNORECASE):
+            resto = texto[m.end():]
+            corte = re.search(PROY_CORTE, resto, re.IGNORECASE)
+            nombre = resto[:corte.start() if corte else len(resto)]
+            nombre = nombre.strip(" .,;:")
+            # Nombres de 1-2 letras o frases enteras no valen
+            if 3 <= len(nombre) <= 60:
+                # En el ticket queda mejor con mayuscula inicial.
+                fuera.append(nombre[0].upper() + nombre[1:])
+    return fuera
+
+
+def actualizar_proyectos(texto):
+    """Aplica al archivo lo que se diga en el dictado.
+
+    Devuelve (lista_final, anadidos, quitados) para poder avisar.
+    """
+    lista = cargar_proyectos()
+    anadidos, quitados = [], []
+
+    for nombre in _extraer_proy(texto, PROY_ANADIR):
+        if not any(_mismo_proy(nombre, p) for p in lista):
+            lista.append(nombre)
+            anadidos.append(nombre)
+
+    for nombre in _extraer_proy(texto, PROY_QUITAR):
+        for p in list(lista):
+            if _mismo_proy(nombre, p):
+                lista.remove(p)
+                quitados.append(p)
+
+    if anadidos or quitados:
+        guardar_proyectos(lista)
+    return lista, anadidos, quitados
+
+
+def proyectos_para_ticket(lista=None, ancho=32):
+    """Las lineas de la lista tal como van al papel."""
+    lista = cargar_proyectos() if lista is None else lista
+    if not lista:
+        return ""
+    lineas = ["EN MARCHA:"]
+    for p in lista:
+        # Un proyecto que no cabe se acorta por palabra entera: en un
+        # ticket, "vigilancia con l..." se lee peor que "vigilancia".
+        t = p
+        if len(t) > ancho - 2:
+            corte = t[:ancho - 2].rsplit(" ", 1)[0].rstrip(" ,.")
+            t = corte if len(corte) >= 8 else t[:ancho - 2]
+        lineas.append("- " + t)
+    return "\n".join(lineas)
+
+
+# ==================================================================
 # LO QUE LE PIDES A PICHON, APARTE DEL RELATO
 # ==================================================================
 # Como sueles pedirle cosas al aparato. Todo lo que venga detras es el
@@ -1566,6 +1692,15 @@ async function enviar(){
       document.getElementById('mor').innerHTML +=
         '<div class="m" style="opacity:.6;font-size:.9em">oido: '+d.texto+'</div>';
     }
+    // Si la lista de proyectos cambio, ensenar que paso: es lo unico
+    // que persiste entre dias, asi que conviene verlo al momento.
+    if((d.anadidos && d.anadidos.length) || (d.quitados && d.quitados.length)){
+      let h = '<div class="m" style="font-size:.9em">';
+      if(d.anadidos.length) h += 'anadido a la lista: '+d.anadidos.join(', ')+'<br>';
+      if(d.quitados.length) h += 'quitado de la lista: '+d.quitados.join(', ')+'<br>';
+      if(d.proyectos) h += '<br>en marcha: '+d.proyectos.join(' &middot; ');
+      document.getElementById('mor').innerHTML += h+'</div>';
+    }
     t.value='';
   }).catch(e=>est.textContent='error: '+e);
 }
@@ -1606,6 +1741,15 @@ def contar():
     if not texto:
         return jsonify(error="texto vacio")
 
+    # La lista de proyectos se actualiza con el texto EN CRUDO, antes de
+    # que el LLM lo toque: las instrucciones ("anade a la lista X") son
+    # literales, y pasarlas por el modelo solo puede estropearlas.
+    lista_proy, anadidos, quitados = actualizar_proyectos(texto)
+    if anadidos:
+        print("  proyectos +:", ", ".join(anadidos))
+    if quitados:
+        print("  proyectos -:", ", ".join(quitados))
+
     moraleja = destilar(texto)
     if not moraleja:
         return jsonify(error="Ollama no responde. ¿Esta arrancado?")
@@ -1622,7 +1766,9 @@ def contar():
     })
     guardar(entradas)
     print(f"[{datetime.now():%H:%M}] nueva entrada -> {moraleja[:60]}...")
-    return jsonify(moraleja=moraleja, texto=texto)
+    return jsonify(moraleja=moraleja, texto=texto,
+                   proyectos=lista_proy,
+                   anadidos=anadidos, quitados=quitados)
 
 def frase_del_dia():
     lista = frases()
@@ -1659,9 +1805,15 @@ def ticket():
     salida = f"FRASE:{f}\n"
     if m:
         salida += f"MORALEJA:{sin_tildes(m)}\n"
+    # La lista de proyectos va SIEMPRE, la haya o no moraleja: es lo que
+    # tienes entre manos, no depende de que anoche contaras algo.
+    proy = proyectos_para_ticket()
+    if proy:
+        salida += f"PROYECTOS:{sin_tildes(proy)}\n"
     salida += "FIN:\n"
     print(f"[{datetime.now():%H:%M}] ticket servido al ESP32"
-          f"{' (con moraleja)' if m else ' (solo frase)'}")
+          f"{' (con moraleja)' if m else ' (solo frase)'}"
+          f"{' + %d proyectos' % len(cargar_proyectos()) if proy else ''}")
     return Response(salida, mimetype="text/plain")
 
 @app.route("/previsualizar")

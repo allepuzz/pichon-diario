@@ -108,6 +108,13 @@ despertar el ESP32 solo, imprimiendo tickets a deshoras.
 
 **Resultado:** imprime.
 
+**Sobre el hardware:** el montaje está soldado a mano, no montado en
+protoboard. En un aparato que vive en la mesilla, que se enchufa y
+desenchufa, un dupont suelto acaba pasando — y un falso contacto en la
+línea serie no se cae del todo: se manifiesta como caracteres basura a
+media línea, que cuesta mucho más diagnosticar que un cable que no
+conecta.
+
 ---
 
 ## Fase 5 — El primer fallo de verdad: alucina deportes

@@ -157,7 +157,7 @@ String buscarPi() {
 }
 
 // Pide el ticket. Devuelve true si la Pi contesto.
-bool pedirTicket(String& frase, String& moraleja) {
+bool pedirTicket(String& frase, String& moraleja, String& proyectos) {
   String host = buscarPi();
   if (host.length() == 0) {
     Serial.println("No encuentro la Pi en la red.");
@@ -188,22 +188,34 @@ bool pedirTicket(String& frase, String& moraleja) {
   String cuerpo = http.getString();
   http.end();
 
-  // Formato: lineas "FRASE:..." y "MORALEJA:..."
+  // Formato: "FRASE:...", "MORALEJA:..." y "PROYECTOS:..." (esta
+  // ultima ocupa varias lineas, hasta que llega "FIN:").
+  bool enProyectos = false;
   int ini = 0;
   while (ini < (int)cuerpo.length()) {
     int fin = cuerpo.indexOf('\n', ini);
     if (fin < 0) fin = cuerpo.length();
     String l = cuerpo.substring(ini, fin);
     l.trim();
-    if (l.startsWith("FRASE:"))         frase    = l.substring(6);
-    else if (l.startsWith("MORALEJA:")) moraleja = l.substring(9);
+
+    if (l.startsWith("FRASE:"))         { frase = l.substring(6);    enProyectos = false; }
+    else if (l.startsWith("MORALEJA:")) { moraleja = l.substring(9); enProyectos = false; }
+    else if (l.startsWith("PROYECTOS:")) {
+      proyectos = l.substring(10);
+      enProyectos = true;                  // lo que siga es la lista
+    }
+    else if (l.startsWith("FIN:"))      { enProyectos = false; }
+    else if (enProyectos && l.length())  {
+      proyectos += "\n" + l;
+    }
     ini = fin + 1;
   }
   return frase.length() > 0;
 }
 
 // ============ EL TICKET ============
-void imprimirTicket(const String& frase, const String& moraleja, const char* fecha) {
+void imprimirTicket(const String& frase, const String& moraleja,
+                    const String& proyectos, const char* fecha) {
   abrirImpresora();
 
   escAlinear(1);
@@ -224,6 +236,20 @@ void imprimirTicket(const String& frase, const String& moraleja, const char* fec
     escNegrita(false);
     escAlinear(0);
     imprimirParrafo(moraleja);
+  }
+
+  // La lista de proyectos, si la hay. Va al final: es lo que miras de
+  // reojo durante el dia, no lo que lees de un tiron al levantarte.
+  if (proyectos.length() > 0) {
+    Serial2.print("\n");
+    escAlinear(1);
+    Serial2.print("--------------------------------\n");
+    escAlinear(0);
+    // Ya viene con sus saltos de linea y sus guiones desde la Pi, asi
+    // que se imprime tal cual: no pasa por imprimirParrafo(), que
+    // juntaria las lineas.
+    Serial2.print(proyectos);
+    Serial2.print("\n");
   }
 
   escAlinear(1);
@@ -295,12 +321,12 @@ void hacerTicket(bool comprobarHora) {
     memoria.putInt("ultimoDia", diaActual);
   }
 
-  String frase = "", moraleja = "";
-  if (!pedirTicket(frase, moraleja)) frase = FRASE_EMERGENCIA;
+  String frase = "", moraleja = "", proyectos = "";
+  if (!pedirTicket(frase, moraleja, proyectos)) frase = FRASE_EMERGENCIA;
 
   char fecha[32];
   strftime(fecha, sizeof(fecha), "%d/%m/%Y  %H:%M", &t);
-  imprimirTicket(frase, moraleja, fecha);
+  imprimirTicket(frase, moraleja, proyectos, fecha);
   Serial.println(">> Ticket impreso.");
 
   aDormir();

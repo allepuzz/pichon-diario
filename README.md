@@ -1,6 +1,10 @@
-# Pichón
+# π-chón
 
 Un diario hablado que sale en papel.
+
+> El nombre se escribe **π-chón**: la pi de la Raspberry Pi. GitHub no
+> admite símbolos fuera del ASCII en el nombre del repositorio, así que
+> ahí se queda en `pichon-diario`.
 
 De noche le cuentas al móvil cómo te ha ido el día. Un modelo de lenguaje
 que corre en una Raspberry Pi —sin nube, sin API de nadie— lo destila en
@@ -73,6 +77,16 @@ ESP32 GND ───────────────▶ CTS de la impresora  
 
 La impresora lleva **fuente propia**: tira picos de 1,5-2 A al imprimir
 y reiniciaría el ESP32 si colgara de él.
+
+Todo el cableado está **soldado a mano**, punto por punto: los tres
+cables al header de la impresora, el puente de CTS a masa y la
+alimentación. Nada de protoboard ni de conectores dupont — un aparato
+que vive en la mesilla y se enchufa y desenchufa acaba soltando un
+cable, y un falso contacto en la línea serie se manifiesta como
+caracteres basura a media línea, que es de las cosas más molestas de
+diagnosticar.
+
+![El montaje: ESP32, impresora térmica y el cableado soldado](fotos/montaje.jpg)
 
 ---
 
