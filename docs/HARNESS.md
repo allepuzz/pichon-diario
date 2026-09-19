@@ -1,123 +1,140 @@
 # Harness engineering
 
-Este documento explica la arquitectura que hace que un modelo de 3B
-—que solo no acierta— produzca resultados fiables.
+> **Harness**: everything surrounding the call to the model. How you
+> prepare the input, how you validate the output, what you retry, what
+> you correct deterministically, and what you do when nothing works.
+>
+> The model is one piece. The harness is the machinery around it.
+
+This document explains the architecture that makes a 3B model — which on
+its own gets it wrong — produce reliable results.
+
+> The code is written in Spanish. Function and constant names appear
+> here as they are in the source: `destilar()`, `LARGO_TICKET`, and so
+> on. Model outputs are also kept in Spanish: they are the evidence.
 
 ---
 
-## El principio
+## The principle
 
-Cada vez que existe una regla determinista disponible, esa regla gana a
-rezarle al prompt. Suena obvio; en la práctica cuesta, porque la
-tentación siempre es reescribir el prompt una vez más.
+> **Don't ask the model for what a regex can do.
+> Don't trust it to be right without checking.**
 
-El dato que lo justifica: **siete modelos distintos fallaron la misma
-prueba. El harness la pasó.**
+Whenever a deterministic rule is available, that rule beats praying to
+the prompt. It sounds obvious; in practice it's hard, because the
+temptation is always to rewrite the prompt one more time.
+
+The number that backs it: **seven different models failed the same test.
+The harness passed it.**
 
 ---
 
-## El recorrido completo
+## The full pipeline
 
 ```
-                      texto dictado (roto, con muletillas)
+                     dictated text (broken, full of filler)
                                    │
    ┌───────────────────────────────▼───────────────────────────────┐
-   │  PREPARAR LA ENTRADA        (determinista, sin LLM)           │
+   │  PREPARE THE INPUT          (deterministic, no LLM)           │
    │                                                                │
-   │  limpiar()               quita "eh", "o sea", "sabes"          │
-   │  extraer_recordatorios() separa "recuérdame que..." del relato │
+   │  limpiar()               strips "eh", "o sea", "sabes"         │
+   │  extraer_recordatorios() splits "remind me that..." from the   │
+   │                          account of the day                    │
    │  explicitar_sujeto()     "me ganó" → "mi padre me ganó"        │
    └───────────────────────────────┬───────────────────────────────┘
                                    │
    ┌───────────────────────────────▼───────────────────────────────┐
-   │  GENERAR                    llama3.2:3b                        │
+   │  GENERATE                   llama3.2:3b                        │
    │                                                                │
-   │  3 candidatas, temperatura 0.25 → 0.40 → 0.55                  │
-   │  corta antes si alguna saca nota ≥ 70                          │
+   │  3 candidates, temperature 0.25 → 0.40 → 0.55                  │
+   │  stops early if one scores ≥ 70                                │
    └───────────────────────────────┬───────────────────────────────┘
                                    │
    ┌───────────────────────────────▼───────────────────────────────┐
-   │  FILTRAR                    (determinista, sin LLM)            │
+   │  FILTER                     (deterministic, no LLM)            │
    │                                                                │
-   │  validar_directo()   ¿frases repetidas? ¿palabras inventadas?  │
-   │                      ¿vocabulario que no viene del texto?      │
-   │  puntuar()           0-100: cobertura del día + precisión      │
+   │  validar_directo()   repeated sentences? invented words?       │
+   │                      vocabulary not from the source text?      │
+   │  puntuar()           0-100: coverage of the day + precision    │
    └───────────────────────────────┬───────────────────────────────┘
                                    │
                         ┌──────────┴──────────┐
-              nota ≥65 y sin        nota <65, o hay frases
-              frases sospechosas    tipo "has olvidado..."
+              score ≥65 and no      score <65, or sentences
+              suspicious phrases    like "has olvidado..."
                         │                     │
                         │        ┌────────────▼────────────┐
-                        │        │  JUZGAR                 │
+                        │        │  JUDGE                  │
                         │        │  qwen2.5:7b-instruct    │
-                        │        │  (el 3B ya se soltó)    │
+                        │        │  (the 3B is released)   │
                         │        │                          │
-                        │        │  ¿se lo ha inventado?    │
-                        │        │  "¿está esto dicho       │
-                        │        │   en el texto? SÍ/NO"    │
+                        │        │  did it make this up?    │
+                        │        │  "is this stated in      │
+                        │        │   the text? YES/NO"      │
                         │        │                          │
-                        │        │  ¿tarea o hecho?         │
-                        │        │  "¿ya lo hizo, o tiene   │
-                        │        │   que hacerlo?"          │
+                        │        │  task or fact?           │
+                        │        │  "already done, or       │
+                        │        │   still to do?"          │
                         │        │                          │
-                        │        │  si tumba 2/3 o más,     │
-                        │        │  se ignora el juez       │
+                        │        │  if it rejects 2/3 or    │
+                        │        │  more, ignore the judge  │
                         │        └────────────┬────────────┘
                         └──────────┬──────────┘
                                    │
    ┌───────────────────────────────▼───────────────────────────────┐
-   │  CORREGIR                   (determinista, sin LLM)            │
+   │  CORRECT                    (deterministic, no LLM)            │
    │                                                                │
    │  corregir_persona()      "lo saqué" → "lo sacaste"             │
    │  arreglar_concordancia() "él te ganaste" → "él te ganó"        │
-   │  arreglar_intencion()    "has olvidado X" → "tienes que X"      │
-   │  recortar_a_frase()      ≤310 car., nunca a media palabra      │
-   │  con_recordatorio()      pega "No olvides: ..." al final       │
+   │  arreglar_intencion()    "has olvidado X" → "tienes que X"     │
+   │  recortar_a_frase()      ≤310 chars, never mid-word            │
+   │  con_recordatorio()      appends "No olvides: ..." at the end  │
    └───────────────────────────────┬───────────────────────────────┘
                                    │
                                    ▼
-                          párrafo para el ticket
+                        paragraph for the ticket
 ```
 
 ---
 
-## Las siete piezas
+## The seven pieces
 
-### 1. Preparar la entrada
+### 1. Prepare the input
 
-Lo que se arregla antes de que el modelo lea, no se le puede estropear
-después.
+What you fix before the model reads it, the model cannot break.
 
-**`limpiar()`** — quita muletillas con regex. Ahorra al modelo medio
-trabajo y reduce el ruido del que puede tirar para inventar.
+**`limpiar()`** — strips filler words with regex. Saves the model half
+the work and removes noise it could otherwise pull on to invent things.
 
-**`extraer_recordatorios()`** — separa lo que le pides al aparato de lo
-que cuentas de tu día. Nació de un fallo real:
-
-```
-dictado:  "lo más importante es que me imprimas que tengo que devolver las llaves"
-sin esto: "Lo importante es que te imprimas que tienes que devolver las llaves"  mal
-con esto: "No olvides: tienes que devolver las llaves."                          ok
-```
-
-El recordatorio **nunca pasa por el LLM**, así que no puede deformarse.
-
-**`explicitar_sujeto()`** — la pieza que resolvió lo que ningún modelo
-resolvió. El descubrimiento: con el sujeto explícito y delante, el
-modelo acierta siempre; con el sujeto implícito, falla siempre.
+**`extraer_recordatorios()`** — separates what you're asking the device
+to do from what you're telling it about your day. Born from a real
+failure:
 
 ```
-entrada:  "jugué al ajedrez con mi padre y me ganó dos partidas"
-reescrito:"jugué al ajedrez con mi padre y mi padre me ganó dos partidas"
+dictated: "the important thing is to print that I have to return the keys"
+without:  "The important thing is that you print that you have to
+           return the keys"                                          bad
+with:     "Don't forget: you have to return the keys."               ok
 ```
+
+The reminder **never passes through the LLM**, so it cannot be mangled.
+
+**`explicitar_sujeto()`** — the piece that solved what no model solved.
+The finding: with the subject explicit and up front, the model is always
+right; with the subject implicit, it always fails.
+
+```
+input:     "jugué al ajedrez con mi padre y me ganó dos partidas"
+rewritten: "jugué al ajedrez con mi padre y mi padre me ganó dos partidas"
+```
+
+(*"he beat me two games"* becomes *"my father beat me two games"*.)
 
 ---
 
-### 2. Generar varias y elegir
+### 2. Generate several, pick the best
 
-Un 3B es **inestable**: la misma entrada produce una salida buena y otra
-desastrosa. Quedarse con la primera que pasa el filtro desaprovecha eso.
+A 3B is **unstable**: the same input produces one good output and one
+disastrous one. Taking the first that passes the filter wastes that.
 
 ```python
 for intento in range(3):
@@ -125,217 +142,223 @@ for intento in range(3):
     ...
     nota = puntuar(m, limpio)
     candidatas.append((nota, m))
-    if nota >= 70:        # ya no va a mejorar: no gastamos más
+    if nota >= 70:        # it won't get better: stop spending
         break
 candidatas.sort(reverse=True)
 ```
 
-**`puntuar()` no gasta LLM.** Mide dos cosas sobre el vocabulario:
+**`puntuar()` spends no LLM time.** It measures two things about the
+vocabulary:
 
-- **cobertura** — cuánto del día recoge el párrafo
-- **precisión** — cuánto del párrafo viene del día
+- **coverage** — how much of the day the paragraph captures
+- **precision** — how much of the paragraph comes from the day
 
 ```
-  60  buena                "Hoy fue tu primer día de trabajo..."
-  18  con invento          "...llegaste a muchos clientes y proyectos"
-   0  inventada del todo   "Hoy jugaste al tenis, al fútbol..."
+  60  good                 "Hoy fue tu primer día de trabajo..."
+  18  partly invented      "...llegaste a muchos clientes y proyectos"
+   0  fully invented       "Hoy jugaste al tenis, al fútbol..."
 ```
 
 ---
 
-### 3. Filtrar lo imposible
+### 3. Filter the impossible
 
-**`validar_directo()`** rechaza tres cosas, todas detectables sin LLM:
+**`validar_directo()`** rejects three things, all detectable without an
+LLM:
 
-| Qué detecta         | Ejemplo real                                                             |
-| ------------------- | ------------------------------------------------------------------------ |
-| Frases repetidas    | _"Hoy jugaste al tenis, hoy jugaste al fútbol, hoy jugaste al voleibol"_ |
-| Palabras inventadas | _"la saquéste"_, _"juegaste"_                                            |
-| Vocabulario ajeno   | más de 1/3 de palabras que no vienen del texto                           |
+| What it catches | Real example |
+|---|---|
+| Repeated sentences | *"Hoy jugaste al tenis, hoy jugaste al fútbol, hoy jugaste al voleibol"* |
+| Invented words | *"la saquéste"*, *"juegaste"* — neither is a Spanish word |
+| Foreign vocabulary | more than 1/3 of words not present in the source text |
 
-**Un bug sutil que tuvo que arreglarse:** la primera versión comparaba
-raíces por 5 caracteres, y eso **penalizaba las conjugaciones correctas**
-— "jugaste" no comparte 5 caracteres con "jugué". El validador castigaba
-justo lo que hacía bien. Ahora compara raíces quitando terminaciones
-verbales.
+**A subtle bug that had to be fixed:** the first version compared word
+stems by 5 characters, which **penalised correct conjugations** —
+"jugaste" doesn't share 5 characters with "jugué". The validator was
+punishing exactly what the model got right. It now compares stems after
+stripping verb endings.
 
 ---
 
-### 4. Verificar con otro modelo
+### 4. Judge with a different model
 
-La pieza más cara y la que más cuidado necesita.
+The most expensive piece, and the one that needs the most care.
 
-**El hallazgo:** `qwen2.5:7b` acierta **6/6** verificando. Es el mismo
-modelo que descartamos por redactar mal. No es contradicción: lo que le
-hace mal redactor —se pega al texto original, no se aleja— es justo lo
-que le hace buen juez.
+**The finding:** `qwen2.5:7b` scores **6/6** on verification. It's the
+same model discarded for writing badly. Not a contradiction: what makes
+it a bad writer — it sticks to the source text, it won't move away from
+it — is exactly what makes it a good judge.
 
-| Modelo                | Aciertos verificando |
-| --------------------- | -------------------- |
-| `qwen2.5:7b-instruct` | **6/6**              |
-| `llama3.2:3b`         | 3/6 (dice NO a todo) |
-| `glm4:9b`             | 3/6 (dice NO a todo) |
+| Model | Verification accuracy |
+|---|---|
+| `qwen2.5:7b-instruct` | **6/6** |
+| `llama3.2:3b` | 3/6 (says NO to everything) |
+| `glm4:9b` | 3/6 (says NO to everything) |
 
-**Las dos salvaguardas**, ambas nacidas de un fallo real
-(esquemático; el código real está en `destilar_directo()`):
+**The two safeguards**, both born from a real failure (schematic; the
+real code is in `destilar_directo()`):
 
 ```python
 if nota >= 65:
-    return mejor            # no hace falta verificar, y ahorra ~20s/frase
+    return mejor            # no need to verify, saves ~20 s per sentence
 
 buenas, malas = verificar_parrafo(mejor, limpio)
 
 if len(buenas) <= len(malas) / 2:
-    return mejor            # el que falla es EL VERIFICADOR, no el texto
+    return mejor            # THE VERIFIER is what's failing, not the text
 ```
 
-Sin la segunda, una candidata con nota 89 fue destruida por un
-verificador que respondía NO a todo.
+Without the second one, a candidate scoring 89 was destroyed by a
+verifier that answered NO to everything.
 
-**El mismo modelo hace un segundo trabajo: distinguir tarea de hecho.**
-El dictado decía _"no olvidar de hablar con Ricardo"_ (pendiente) y
-el 3B escribía _"has olvidado hablar con Ricardo"_ — invierte el
-sentido y encima suena a reproche.
+**The same model does a second job: telling a task from a fact.** The
+dictation said *"no olvidar de hablar con Ricardo"* — "don't forget to
+talk to Ricardo", something still pending — and the 3B wrote *"has
+olvidado hablar con Ricardo"*: "you forgot to talk to Ricardo". It flips
+the meaning and reads like a reproach.
 
-| Modelo                | Aciertos tarea/hecho    |
-| --------------------- | ----------------------- |
-| `qwen2.5:7b-instruct` | **8/8**                 |
-| `llama3.2:3b`         | 4/8 (dice TAREA a todo) |
+| Model | Task/fact accuracy |
+|---|---|
+| `qwen2.5:7b-instruct` | **8/8** |
+| `llama3.2:3b` | 4/8 (says TASK to everything) |
 
-`arreglar_intencion()` solo pregunta cuando el párrafo tiene frases
-sospechosas (_"has olvidado"_, _"te olvidaste de"_). Si no las hay, el
-7B ni se carga. Y cuando ambas cosas tocan —verificar e intención— se
-carga una sola vez.
+`arreglar_intencion()` only asks when the paragraph contains suspicious
+phrases (*"has olvidado"*, *"te olvidaste de"*). If there are none, the
+7B isn't even loaded. And when both jobs are needed — verification and
+intent — it loads once.
 
-**Por qué no un modelo de razonamiento.** Se planteó añadir un
-razonador (`qwen3:4b`, `deepseek-r1:7b`) como capa de comprensión. No
-hizo falta: el 7B ya instalado acierta 8/8. Y había dos razones para
-desconfiar — el código ya avisaba de que los modelos _thinking_ a veces
-agotan los tokens razonando y devuelven la respuesta vacía
-(`SIN_RAZONAR = True`), y en una Pi sin GPU razonar cuesta cientos de
-tokens antes de la primera palabra útil.
+**Why not a reasoning model.** Adding a reasoner (`qwen3:4b`,
+`deepseek-r1:7b`) as a comprehension layer was considered. It wasn't
+needed: the 7B already installed scores 8/8. And there were two reasons
+for suspicion — the code already warned that *thinking* models sometimes
+burn their token budget reasoning and return an empty answer
+(`SIN_RAZONAR = True`), and on a GPU-less Pi reasoning costs hundreds of
+tokens before the first useful word.
 
 ---
 
-### 5. Corregir de forma determinista
+### 5. Correct deterministically
 
-Lo que el modelo no sabe hacer, lo hacen reglas.
+What the model can't do, rules do.
 
-**`corregir_persona()`** — el modelo copia las formas verbales del
-dictado en vez de conjugarlas. Cubre irregulares (`fui→fuiste`,
-`estuve→estuviste`), presentes (`estoy→estás`), regulares con su cambio
-ortográfico (`saqué→sacaste`, `llegué→llegaste`, `empecé→empezaste`) y
-pronombres (`me→te`, `mi→tu`).
+**`corregir_persona()`** — the model copies verb forms straight from the
+dictation instead of conjugating them into the second person. It covers
+irregulars (`fui→fuiste`, `estuve→estuviste`), present tense
+(`estoy→estás`), regulars with their spelling shifts (`saqué→sacaste`,
+`llegué→llegaste`, `empecé→empezaste`) and pronouns (`me→te`, `mi→tu`).
 
-**Lo que más trabajo costó fue no romper texto correcto.** La primera
-versión convertía "café" en "cafaste" y "allí" en "alliste". Hay una
-lista de excepciones y un mínimo de longitud de raíz.
+**The hard part was not breaking correct text.** The first version
+turned "café" into "cafaste" and "allí" into "alliste" — nonsense,
+because those aren't verbs, they just end the same way. There's now an
+exception list and a minimum stem length.
 
-**`arreglar_concordancia()`** — _"él te ganaste"_ es agramatical en
-español. Cuando aparece, sabemos **con certeza** que el verbo está mal
-conjugado, y se pasa a tercera persona. No hay ambigüedad que resolver.
+**`arreglar_concordancia()`** — *"él te ganaste"* is ungrammatical in
+Spanish: third-person subject with a second-person verb. When it
+appears, we know **with certainty** that the verb is wrong, and it gets
+moved to third person. There's no ambiguity to resolve.
 
 ---
 
-### 6. Cascada de respaldo
+### 6. Fallback cascade
 
 ```
-destilar_directo()            3 candidatas + verificación
-        │ falla
+destilar_directo()            3 candidates + verification
+        │ fails
         ▼
-destilar_por_hechos()         extraer hechos → redactarlos
-        │ falla                (dos tareas fáciles en vez de una difícil)
+destilar_por_hechos()         extract facts → write them up
+        │ fails                (two easy tasks instead of one hard one)
         ▼
-destilar_a_prueba_de_fallos() los hechos tal cual, sin redactar
-                              (no puede alucinar: no genera prosa)
+destilar_a_prueba_de_fallos() the facts as-is, unwritten
+                              (can't hallucinate: it generates no prose)
 ```
 
-En un diario personal, unos hechos sin adornar son preferibles a un día
-inventado.
+In a personal diary, plain unadorned facts beat an invented day.
 
 ---
 
-### 7. La RAM vuelve a cero
+### 7. RAM goes back to zero
 
-La Pi se comparte con otros proyectos, así que ningún modelo queda
-residente.
+The Pi is shared with other projects, so no model stays resident.
 
 ```
-petición HTTPS
+HTTPS request
    │
-   ├─▶ carga 3B ──▶ redacta ──▶ SUELTA 3B
-   │                                │
-   │                                ├─▶ [si hace falta] carga 7B
-   │                                │      verifica N frases
-   │                                │      SUELTA 7B en la última
-   │                                │
-   └─▶ finally: suelta ambos ──▶ RAM a cero
+   ├─▶ load 3B ──▶ write ──▶ RELEASE 3B
+   │                              │
+   │                              ├─▶ [if needed] load 7B
+   │                              │      verify N sentences
+   │                              │      RELEASE 7B on the last one
+   │                              │
+   └─▶ finally: release both ──▶ RAM at zero
 ```
 
-**Nunca coexisten los dos modelos.** El pico es siempre uno solo. El
-`finally` garantiza la liberación incluso si salta una excepción.
+**The two models never coexist.** The peak is always a single model. The
+`finally` guarantees release even if an exception is thrown.
 
-Medido: 7645 MB libres antes, 7566 MB después, `ollama ps` vacío.
-
----
-
-## Lo que costó aprender
-
-**Un filtro más estricto que el generador se come lo bueno.** El
-verificador tumbó una candidata con nota 89. La lección no es "no
-verifiques", sino "mide si tu verificador discrimina antes de confiar en
-él" — y ten una salida cuando no lo haga.
-
-**Un ejemplo dentro de una regla del prompt se copia.** La regla decía
-_"habla en segunda persona: hoy jugaste al tenis..."_ y el modelo escribió
-tres frases sobre deportes. Los ejemplos enseñan formato; nunca deben
-llevar contenido plausible.
-
-**Los modelos pequeños son inestables, no malos.** La misma entrada da
-una salida excelente y otra desastrosa. Generar tres y elegir aprovecha
-eso mejor que insistir en el prompt.
-
-**Cada modelo tiene su tarea.** El que mejor redacta no es el que mejor
-verifica. Y el que peor redacta puede ser el mejor juez.
-
-**El harness gana a los parámetros.** Siete modelos de 2B a 9B, y el que
-resolvió el problema fue el de 3B — con maquinaria alrededor, y siendo
-tres veces más rápido que los de 8B.
+Measured: 7645 MB free before, 7566 MB after, `ollama ps` empty.
 
 ---
 
-## Lo que el harness NO arregla
+## What it cost to learn
 
-Esta sección existe porque casi todo lo medido hasta aquí se midió sobre
-**un solo dictado** — el de trabajo, las llaves y Ricardo. Sobre
-ese texto el sistema acierta 20 de 20. Sobre días que nunca había visto,
-**falla la mitad de las veces**.
+**A filter stricter than the generator eats the good output.** The
+verifier knocked down a candidate scoring 89. The lesson isn't "don't
+verify": it's "measure whether your verifier actually discriminates
+before trusting it" — and have a way out when it doesn't.
 
-Se probaron ocho días distintos (dar clases de voleibol, una operación
-de hombro, una mudanza, una discusión, aprobar una oposición, un viaje a
-Lisboa, preocupación por dinero, un día plano). Cuatro salieron limpios.
-Los otros cuatro:
+**An example inside a prompt rule gets copied.** The rule said *"speak
+in the second person: today you played tennis..."* and the model wrote
+three sentences about sports it had invented. Examples teach format;
+they must never carry plausible content.
 
-| Fallo                       | Ejemplo real                                                                    |
-| --------------------------- | ------------------------------------------------------------------------------- |
-| Pierde detalles             | _"hemos vaciado el piso con cajas"_ → el resumen no menciona las cajas          |
-| Primera persona en presente | _"te dijo que **necesito** operarme"_                                           |
-| Gramática rota              | _"has estado justo mes"_, _"Tú has estado"_                                     |
-| Cambia un verbo             | _"quiero **ver** el mirador"_ → _"quieres **hablar con la gente** del mirador"_ |
+**Small models are unstable, not bad.** The same input yields an
+excellent output and a disastrous one. Generating three and picking the
+best exploits that better than hammering the prompt.
 
-Ninguno es catastrófico —no inventa días enteros ni invierte quién gana
-a quién, que eran los fallos graves— pero están ahí.
+**Each model has its job.** The best writer isn't the best verifier. And
+the worst writer may be the best judge.
 
-**La lección metodológica**, que vale más que el detalle concreto:
+**The harness beats the parameters.** Seven models from 2B to 9B, and
+the one that solved the problem was the 3B — with machinery around it,
+and three times faster than the 8B models.
 
-Un ejemplo de lo que eso destapó: la lista `RASTROS_EJEMPLO` llegó a
-contener `"jugaste al voleibol"`, añadido para cazar un caso en que el
-modelo copiaba el ejemplo del prompt. Habría rechazado una salida
-**correcta** el día que el autor empezara a dar clases de voleibol. Se
-quitó al construir la batería de días variados — antes de ejecutarla
-siquiera.
+---
 
-Las listas cerradas (parentescos, nombres, verbos irregulares) tienen
-todas ese riesgo. La vía robusta es la de `validar_directo()`: comparar
-vocabulario contra el texto original, que no depende de enumerar el
-mundo.
+## What the harness does NOT fix
+
+This section exists because almost everything measured above was
+measured against **a single dictation**. On that text the system scores
+20 out of 20. On days it had never seen, **it fails half the time**.
+
+Eight different days were tested (teaching volleyball, a shoulder
+operation, a house move, an argument, passing an exam, a trip, money
+worries, a day where nothing happens). Four came out clean. The other
+four:
+
+| Failure | Real example |
+|---|---|
+| Drops details | *"we emptied the whole flat, with boxes"* → the summary never mentions the boxes |
+| First person in present tense | *"te dijo que **necesito** operarme"* — "it told you that **I** need surgery" |
+| Broken grammar | *"has estado justo mes"*, *"Tú has estado"* |
+| Changes a verb | *"I want to **see** the viewpoint"* → *"you want to **talk to the people** at the viewpoint"* |
+
+None is catastrophic — it doesn't invent whole days or flip who won a
+game, which were the serious failures — but they're there.
+
+**The methodological lesson**, which is worth more than the specifics:
+
+> Optimising against a single test case produces a system that solves
+> that case. Every specific fix is a hypothesis about the world, and it
+> has to be checked against cases that didn't inspire it.
+
+An example of what that uncovered: the `RASTROS_EJEMPLO` list once
+contained `"jugaste al voleibol"` — "you played volleyball" — added to
+catch a case where the model was copying the prompt's own example. It
+would have rejected a **correct** output the day the author started
+teaching volleyball. It was removed while building the varied-days
+battery, before even running it.
+
+Closed lists (family relations, names, irregular verbs) all carry that
+risk. The robust approach is the one in `validar_directo()`: compare
+vocabulary against the source text, which doesn't depend on enumerating
+the world.

@@ -1,262 +1,269 @@
 # π-chón
 
-Un diario hablado que sale en papel.
+A spoken diary that comes out on paper.
 
-> El nombre se escribe **π-chón**: la pi de la Raspberry Pi. GitHub no
-> admite símbolos fuera del ASCII en el nombre del repositorio, así que
-> ahí se queda en `pichon-diario`.
+> The name is written **π-chón** — the pi from Raspberry Pi. GitHub only
+> accepts ASCII in repository names, so there it stays `pichon-diario`.
 
-De noche le cuentas al móvil cómo te ha ido el día. Un modelo de lenguaje
-que corre en una Raspberry Pi —sin nube, sin API de nadie— lo destila en
-un párrafo corto. Por la mañana, a las 9:00, un ESP32 despierta solo,
-pide el resumen por WiFi y lo imprime en una térmica de 58 mm, junto con
-una cita del libro de Lil B *Takin' Over by Imposing the Positive*.
+At night you tell your phone how your day went. A language model running
+on a Raspberry Pi — no cloud, nobody's API — distills it into a short
+paragraph. In the morning, at 9:00, an ESP32 wakes up on its own, asks
+for the summary over WiFi and prints it on a 58 mm thermal printer,
+along with a quote from Lil B's *Takin' Over by Imposing the Positive*.
 
 ```
-  NOCHE                                    MAÑANA
+  NIGHT                                    MORNING
   ┌─────────┐                              ┌─────────┐
-  │  móvil  │  dictas tu día               │  ESP32  │  despierta a las 9:00
+  │  phone  │  you dictate your day        │  ESP32  │  wakes at 9:00
   └────┬────┘                              └────┬────┘
        │ HTTPS                                  │ HTTPS
        ▼                                        ▼
   ┌──────────────────────────────┐     ┌─────────────────┐
   │   Raspberry Pi 5             │     │  GET /ticket    │
-  │   Flask + Ollama + harness   │────▶│  frase + día    │
+  │   Flask + Ollama + harness   │────▶│  quote + day    │
   └──────────────────────────────┘     └────────┬────────┘
-                                                │ serie 9600
+                                                │ serial 9600
                                                 ▼
                                        ┌─────────────────┐
-                                       │ térmica EM5820  │
-                                       │  ticket de papel│
+                                       │ EM5820 thermal  │
+                                       │  paper ticket   │
                                        └─────────────────┘
 ```
 
 ---
 
-## Lo que este proyecto acabó siendo
+## What this project turned into
 
-Empezó como un cacharro de mesilla. Acabó siendo un caso de estudio sobre
-**harness engineering**: rodear al modelo de maquinaria determinista
-—preparar la entrada, puntuar y validar la salida, corregir con reglas,
-tener un plan cuando falla— hasta que hace bien una tarea que no sabe
-hacer solo.
+It started as a bedside gadget. It ended up a case study in **harness
+engineering**: wrapping the model in deterministic machinery — preparing
+the input, scoring and validating the output, correcting with rules,
+having a plan for when it fails — until it does well a task it cannot do
+on its own.
 
-El resultado corto, y es el dato que da sentido a todo lo demás:
+The short version, and the number that gives everything else meaning:
 
-> **Siete modelos probados, de 2B a 9B parámetros. Ninguno resolvió el
-> problema. El harness sí — sobre el modelo de 3B, que es el más pequeño
-> de los que redactan bien.**
+> **Seven models tested, from 2B to 9B parameters. None of them solved
+> the problem. The harness did — on the 3B model, the smallest one that
+> writes decent Spanish.**
 
-La documentación completa de cómo se llegó ahí:
+Full documentation of how we got there:
 
-- **[docs/FASES.md](docs/FASES.md)** — el recorrido fase a fase: estado
-  del sistema, qué falló, qué se cambió y qué resultado dio.
-- **[docs/HARNESS.md](docs/HARNESS.md)** — la arquitectura del harness,
-  con diagramas y el porqué de cada pieza.
-- **[docs/MODELOS.md](docs/MODELOS.md)** — los siete modelos, con las
-  salidas reales de cada uno sobre los mismos casos de prueba.
+- **[docs/PHASES.md](docs/PHASES.md)** — the journey phase by phase:
+  system state, what broke, what changed, what it measured.
+- **[docs/HARNESS.md](docs/HARNESS.md)** — the harness architecture,
+  with diagrams and the reasoning behind each piece.
+- **[docs/MODELS.md](docs/MODELS.md)** — the seven models, with real
+  outputs from each on the same test cases.
 
 ---
 
 ## Hardware
 
-| Pieza | Detalle |
+| Part | Detail |
 |---|---|
 | Raspberry Pi 5 | 8 GB RAM, Raspberry Pi OS, hostname `pichon` |
 | ESP32 | DOIT DEVKIT V1 (WROOM, CP2102) |
-| Impresora | EM5820 térmica, 58 mm, TTL 9600 baudios |
-| Móvil | cualquiera con Chrome, para dictar |
+| Printer | EM5820 thermal, 58 mm, TTL 9600 baud |
+| Phone | any with Chrome, for dictating |
 
-**Cableado** (tres cables, nada más):
+**Wiring** (three wires, that's all):
 
 ```
-ESP32 GPIO17 (TX2) ──────▶ pin TX de la impresora   TX, no RX
-ESP32 GND ───────────────▶ GND de la impresora
-ESP32 GND ───────────────▶ CTS de la impresora      (control de flujo)
+ESP32 GPIO17 (TX2) ──────▶ printer TX pin        TX, not RX
+ESP32 GND ───────────────▶ printer GND
+ESP32 GND ───────────────▶ printer CTS           (flow control)
 ```
 
-La impresora lleva **fuente propia**: tira picos de 1,5-2 A al imprimir
-y reiniciaría el ESP32 si colgara de él.
+The printer runs on **its own power supply**: it draws 1.5-2 A spikes
+while printing and would reset the ESP32 if it hung off it.
 
-Todo el cableado está **soldado a mano**, punto por punto: los tres
-cables al header de la impresora, el puente de CTS a masa y la
-alimentación. Nada de protoboard ni de conectores dupont — un aparato
-que vive en la mesilla y se enchufa y desenchufa acaba soltando un
-cable, y un falso contacto en la línea serie se manifiesta como
-caracteres basura a media línea, que es de las cosas más molestas de
-diagnosticar.
+All the wiring is **hand-soldered**, point by point: the three wires to
+the printer header, the CTS-to-ground jumper and the power. No
+breadboard, no dupont connectors — a device that lives on a nightstand
+and gets plugged and unplugged eventually shakes a wire loose, and a bad
+contact on the serial line doesn't fail cleanly: it shows up as garbage
+characters mid-line, which is far more annoying to diagnose than a wire
+that simply doesn't connect.
 
-![El montaje: ESP32, impresora térmica y el cableado soldado](fotos/montaje.jpg)
+![The build: ESP32, thermal printer and the hand-soldered wiring](fotos/montaje.jpg)
 
 ---
 
 ## Software
 
-| Archivo | Qué es |
-|---|---|
-| `pichon_servidor.py` | El cerebro. Flask + Ollama + todo el harness |
-| `pichon_esp32_final/pichon_esp32_final.ino` | El sketch del ESP32 |
-| `pichon_esp32_final/credenciales_ejemplo.h` | Plantilla de WiFi — **hay que copiarla** |
-| `pichon_frases.txt` | 109 citas del libro, verificadas literales |
-| `vocabulario_ejemplo.py` | Tus nombres propios para Whisper — **cópialo** |
+> The code is written in Spanish — function names, constants and
+> comments. This documentation refers to them as they are
+> (`destilar()`, `LARGO_TICKET`).
 
-### 1. La Raspberry Pi
+| File | What it is |
+|---|---|
+| `pichon_servidor.py` | The brain. Flask + Ollama + the whole harness |
+| `pichon_esp32_final/pichon_esp32_final.ino` | The ESP32 sketch |
+| `pichon_esp32_final/credenciales_ejemplo.h` | WiFi template — **copy it** |
+| `vocabulario_ejemplo.py` | Your proper nouns for Whisper — **copy it** |
+| `pichon_frases.txt` | 109 quotes from the book, verified literal |
+
+### 1. The Raspberry Pi
 
 ```bash
 sudo apt install python3-flask python3-requests ffmpeg -y
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull llama3.2:3b            # redacta
-ollama pull qwen2.5:7b-instruct    # verifica
+ollama pull llama3.2:3b            # writes
+ollama pull qwen2.5:7b-instruct    # judges
 
-# Whisper para transcribir (ffmpeg convierte el audio del navegador)
+# Whisper for transcription (ffmpeg converts the browser's audio)
 git clone https://github.com/ggerganov/whisper.cpp ~/whisper.cpp
 cd ~/whisper.cpp && cmake -B build && cmake --build build -j4
 bash ./models/download-ggml-model.sh small
 
-scp pichon_servidor.py pichon_frases.txt usuario@pichon.local:~/
+scp pichon_servidor.py pichon_frases.txt user@pichon.local:~/
 ```
 
 ```bash
-cp vocabulario_ejemplo.py vocabulario.py   # y pon tus nombres propios
+cp vocabulario_ejemplo.py vocabulario.py   # then add your proper nouns
 ```
 
-Ese archivo le dice a Whisper qué nombres esperar: tu ciudad, tu calle,
-la gente con la que hablas. Sin él funciona igual, pero los nombres
-propios poco frecuentes salen destrozados — "Zaragoza" se convertía en
-"Sara Goza" hasta que se añadió. No se sube al repo.
+That file tells Whisper which names to expect: your city, your street,
+the people you talk about. Without it everything still works, but
+uncommon proper nouns come out mangled — one city name kept turning into
+two unrelated words until it was added. It never reaches the repo.
 
-El diario (`pichon_diario.json`) se crea solo con la primera entrada.
-Si `whisper.cpp` no está, el servidor lo detecta y usa la transcripción
-del navegador: funciona igual, solo que peor.
+The diary (`pichon_diario.json`) is created on the first entry.
 
-Como servicio (arranca solo, sobrevive a reinicios):
+As a service (starts on boot, survives reboots):
 
 ```ini
 # /etc/systemd/system/pichon.service
 [Unit]
-Description=Pichon - diario nocturno
+Description=Pichon - nightly diary
 After=network-online.target ollama.service
 Requires=ollama.service
 
 [Service]
-ExecStart=/usr/bin/python3 /home/usuario/pichon_servidor.py https
-WorkingDirectory=/home/usuario
-User=usuario
+ExecStart=/usr/bin/python3 /home/user/pichon_servidor.py https
+WorkingDirectory=/home/user
+User=user
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-### 2. El ESP32
+### 2. The ESP32
 
 ```bash
 cd pichon_esp32_final
-cp credenciales_ejemplo.h credenciales.h   # y rellénalo con tu WiFi
+cp credenciales_ejemplo.h credenciales.h   # then fill in your WiFi
 ```
 
-En el IDE de Arduino: placa **ESP32 Dev Module** (o DOIT ESP32 DEVKIT
-V1), y subir. Pulsar RESET imprime al momento, sin esperar a las 9:00.
+In the Arduino IDE: board **ESP32 Dev Module** (or DOIT ESP32 DEVKIT
+V1), then upload. Pressing RESET prints immediately, without waiting for
+9:00.
 
-> **La ruta no puede tener paréntesis ni espacios.** Las herramientas
-> de compilación de ESP32 fallan con un error confuso sobre
-> `bootloader.bin`.
+> **The path cannot contain parentheses or spaces.** The ESP32 build
+> tools fail with a confusing error about `bootloader.bin`.
 >
-> Aviso: El ESP32 clásico **solo ve WiFi de 2,4 GHz**.
+> The classic ESP32 **only sees 2.4 GHz WiFi**.
 
 ### Endpoints
 
-| Ruta | Quién la usa | Qué hace |
+| Route | Who calls it | What it does |
 |---|---|---|
-| `GET /` | el móvil | la web para dictar |
-| `POST /contar` | el móvil | destila el día y lo guarda |
-| `GET /ticket` | el ESP32 | frase + resumen, **consume** el resumen |
-| `GET /previsualizar` | el móvil | lo mismo, sin consumir |
-| `GET /historial` | el móvil | entradas anteriores |
+| `GET /` | the phone | the dictation page |
+| `POST /contar` | the phone | distills the day and stores it |
+| `GET /ticket` | the ESP32 | quote + summary, **consumes** the summary |
+| `GET /previsualizar` | the phone | same thing, without consuming |
+| `GET /historial` | the phone | previous entries |
 
-**`POST /contar`** es `multipart/form-data` con dos campos:
-`texto` (lo que entendió el navegador) y `audio` (opcional, el dictado
-en crudo). Si hay audio y Whisper está disponible, gana la transcripción
-de Whisper.
+**`POST /contar`** is `multipart/form-data` with two fields: `texto`
+(what the browser heard) and `audio` (optional, the raw dictation). If
+there is audio and Whisper is available, Whisper's transcription wins.
 
-**`GET /ticket`** devuelve texto plano, sin tildes (la térmica usa otra
-tabla de caracteres):
+**`GET /ticket`** returns plain text without accents (the thermal
+printer uses a different character table):
 
 ```
 FRASE:Think about ten things you like about yourself...
 MORALEJA:Hoy jugaste al ajedrez con tu padre y el te gano dos partidas.
+PROYECTOS:EN MARCHA:
+- Tirar curriculum
+- Cyberdeck PSP
 FIN:
 ```
 
-La línea `MORALEJA:` solo aparece si dictaste en las últimas
-**18 horas** (`VENTANA_HORAS`). Pasado ese plazo sale solo la frase —
-es deliberado: no quieres que el ticket del jueves imprima el lunes. Es
-también la causa más probable de un ticket "vacío".
+The `MORALEJA:` line only appears if you dictated within the last
+**18 hours** (`VENTANA_HORAS`). After that only the quote comes out —
+deliberately: you don't want Thursday's ticket printing on Monday. It is
+also the most likely cause of an apparently "empty" ticket.
 
-En el código el resumen se llama **moraleja** en todas partes: el campo
-del JSON, la variable y el protocolo del ticket.
+`PROYECTOS:` is a running list of what you have in progress. It always
+prints, and it updates by voice: *"add X to the list"*, *"I finished
+X"*. Only explicit phrases change it — merely mentioning a project never
+removes it.
 
----
-
-## Dos decisiones que merecen explicación
-
-**La RAM vuelve a cero entre peticiones.** La Pi se comparte con otros
-proyectos, así que ningún modelo queda residente: se carga el de 3B, se
-suelta, se carga el de 7B si hace falta, se suelta. Nunca coexisten.
-Cuesta ~30 s de carga por petición y deja 7,5 GB libres el resto del día.
-
-**El verificador solo entra cuando hace falta.** Puntuar un párrafo es
-determinista y gratis; verificarlo frase a frase cuesta ~20 s por frase.
-Si la nota pasa de 65 no se verifica. Los días claros tardan ~40 s; los
-ambiguos, ~160 s.
+In the code the summary is called **moraleja** everywhere: the JSON
+field, the variable and the ticket protocol.
 
 ---
 
-## Estado
+## Two decisions worth explaining
 
-**Funciona de extremo a extremo**: dictas de noche, imprime a las 9:00.
+**RAM goes back to zero between requests.** The Pi is shared with other
+projects, so no model stays resident: the 3B loads, gets released, the
+7B loads if needed, gets released. They never coexist. It costs ~30 s of
+loading per request and leaves 7.5 GB free the rest of the day.
 
-**Transcripción con Whisper.** El navegador graba el audio además de
-usar el reconocimiento de Chrome, y la Pi lo pasa por `whisper.cpp`
-(modelo `small`, más rápido que tiempo real: 11 s de audio en 7,4 s).
-Si Whisper falla o no está, se usa el texto de Chrome automáticamente.
+**The judge only steps in when needed.** Scoring a paragraph is
+deterministic and free; verifying it sentence by sentence costs ~20 s
+per sentence. Above a score of 65 it isn't verified.
 
-La diferencia es grande: donde Chrome partía un nombre propio en dos
-palabras sin sentido, Whisper lo transcribe entero.
+---
 
-### Lo que está medido
+## Status
 
-Sobre **el mismo dictado repetido 20 veces**: 20/20 sin fallos, 3,5 cm
-de papel, 288-301 caracteres, 38 s de media.
+**Works end to end**: you dictate at night, it prints at 9:00.
 
-Sobre **ocho días que el sistema no había visto**: **4 de 8 con algún
-fallo** — pierde algún detalle, se le cuela la primera persona en
-presente (*"necesito operarme"*), alguna frase con gramática rota.
+**Whisper transcription.** The browser records audio alongside Chrome's
+speech recognition, and the Pi runs it through `whisper.cpp` (`small`
+model, faster than real time: 11 s of audio in 7.4 s). If Whisper fails
+or isn't installed, Chrome's text is used automatically.
 
-Esa diferencia es el dato honesto del proyecto: **el sistema está
-ajustado a los días con los que se desarrolló**. No inventa días enteros
-ni invierte quién gana a quién —los fallos graves están resueltos— pero
-generalizar sigue abierto. Ver
-[HARNESS.md § Lo que el harness NO arregla](docs/HARNESS.md).
+The difference is large: where Chrome split a proper noun into two
+meaningless words, Whisper transcribes it whole.
 
-### Coste por ticket
+### What has been measured
+
+On **the same dictation repeated 20 times**: 20/20 with no failures,
+3.5 cm of paper, 288-301 characters, 38 s average.
+
+On **eight days the system had never seen**: **4 out of 8 had some
+failure** — drops a detail, lets first person slip through in the
+present tense, an occasional broken sentence.
+
+That gap is the honest number of this project: **the system is
+overfitted to the days it was developed against**. It doesn't invent
+whole days or flip who won a game — the serious failures are fixed — but
+generalizing is still open. See
+[HARNESS.md § What the harness does NOT fix](docs/HARNESS.md).
+
+### Cost per ticket
 
 | | |
 |---|---|
-| Papel | 3,5 cm (10 líneas) |
-| Tiempo | 38 s de media; 25 s si el 3B acierta a la primera, ~100 s si entra el 7B |
-| RAM en reposo | 0 — ningún modelo queda cargado |
+| Paper | 3.5 cm (10 lines), ~6 cm with the project list |
+| Time | 38 s average; 25 s if the 3B nails it first try, ~100 s if the 7B steps in |
+| RAM at rest | 0 — no model stays loaded |
 
-Un rollo de 58 mm estándar da para unos 270 tickets: nueve meses.
+A standard 58 mm roll gives around 150 tickets: five months.
 
 ---
 
-## Créditos y licencia
+## Credits and license
 
-Las 109 frases de `pichon_frases.txt` son citas literales de
+The 109 quotes in `pichon_frases.txt` are literal excerpts from
 **Brandon "Lil B" McCartney**, *Takin' Over by Imposing the Positive*
-(2012). Se incluyen como citas para uso personal, con atribución. Si
-reutilizas este proyecto, plantéate poner tus propias frases: el
-formato es una por línea, y las que empiezan por `#` se ignoran.
+(2012). They are included as quotations for personal use, with
+attribution. If you reuse this project, consider using your own lines:
+the format is one per line, and lines starting with `#` are ignored.
 
-El código es tuyo para lo que quieras.
+The code is yours to do whatever you want with.
